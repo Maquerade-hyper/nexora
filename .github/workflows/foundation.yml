@@ -1,0 +1,28 @@
+name: Nexora CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+
+  foundation-check:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate repository
+        run: |
+          test -f README.md
+          test -f pyproject.toml
+          test -f docker-compose.yml
+          test -f .env.example
+          test -f VERSION
+
+      - name: Validate Docker Compose
+        run: docker compose config

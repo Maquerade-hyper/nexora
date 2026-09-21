@@ -1,0 +1,8 @@
+LICENSE
+README.md
+pyproject.toml
+nexora.egg-info/PKG-INFO
+nexora.egg-info/SOURCES.txt
+nexora.egg-info/dependency_links.txt
+nexora.egg-info/requires.txt
+nexora.egg-info/top_level.txt

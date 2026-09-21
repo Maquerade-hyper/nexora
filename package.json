@@ -1,0 +1,11 @@
+{
+  "name": "nexora",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Nexora - Visual Backend Engineering Platform",
+  "scripts": {
+    "test": "echo No frontend tests configured yet",
+    "lint": "echo Frontend linting will be configured later",
+    "build": "echo Frontend build will be configured later"
+  }
+}

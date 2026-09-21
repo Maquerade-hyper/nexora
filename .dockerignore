@@ -1,0 +1,22 @@
+@"
+.git
+.github
+.vscode
+.idea
+.venv
+venv
+node_modules
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.env
+.env.*
+!.env.example
+*.log
+tmp
+temp
+data
+storage
+secrets
+"@ | Set-Content ".dockerignore"
