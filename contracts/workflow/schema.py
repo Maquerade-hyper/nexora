@@ -1,42 +1,52 @@
+from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+
+WORKFLOW_SCHEMA_VERSION = 1
+
+WORKFLOW_REQUIRED_FIELDS = (
+    "schema_version",
+    "id",
+    "name",
+    "description",
+    "version",
+    "graph",
+)
+
+GRAPH_REQUIRED_FIELDS = (
+    "nodes",
+    "ports",
+    "edges",
+)
 
 
-class NodeContract(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+@dataclass(frozen=True)
+class NodeContract:
     id: str
     type: str
-    name: str
-    config: dict[str, Any] = Field(default_factory=dict)
+    config: dict[str, Any]
 
 
-class PortContract(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+@dataclass(frozen=True)
+class PortContract:
     id: str
     node_id: str
     name: str
     direction: str
 
 
-class EdgeContract(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+@dataclass(frozen=True)
+class EdgeContract:
     source_node_id: str
     source_port_id: str
     target_node_id: str
     target_port_id: str
 
 
-class WorkflowContract(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+@dataclass(frozen=True)
+class WorkflowContract:
+    schema_version: int
     id: str
     name: str
-    description: str = ""
-    version: int = 1
-    nodes: list[NodeContract] = Field(default_factory=list)
-    ports: list[PortContract] = Field(default_factory=list)
-    edges: list[EdgeContract] = Field(default_factory=list)
+    description: str
+    version: int
