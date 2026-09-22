@@ -42,6 +42,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-ra"
+pythonpath = ["."]
 
 [tool.mypy]
 python_version = "3.11"
