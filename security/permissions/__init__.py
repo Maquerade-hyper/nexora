@@ -1,0 +1,1 @@
+"""Nexora permission foundation."""
