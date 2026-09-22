@@ -1,0 +1,22 @@
+name: Nexora Docker
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  docker-validation:
+    name: Docker Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Build infrastructure
+        run: docker compose build
