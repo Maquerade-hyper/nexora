@@ -1,6 +1,6 @@
 import json
 
-from core.graph.models import Node
+from core.nodes import NodeInstance
 from core.workflow.models import Workflow
 from core.workflow.workflow import serialize_workflow
 
@@ -13,10 +13,9 @@ def test_workflow_can_be_serialized() -> None:
     )
 
     workflow.graph.add_node(
-        Node(
+        NodeInstance(
             id="validate",
             type="validation",
-            name="Validate User",
             config={"required": ["email", "password"]},
         )
     )

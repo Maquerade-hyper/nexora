@@ -1,51 +1,46 @@
 import pytest
 
-from core.errors.graph import DuplicateNodeError, InvalidConnectionError
-from core.graph.edges import Edge
-from core.graph.graph import WorkflowGraph
-from core.graph.models import Node
-from core.graph.ports import Port, PortDirection
+from core.errors.graph import (
+    DuplicateNodeError,
+    InvalidConnectionError,
+)
+from core.graph import Edge, Port, PortDirection, WorkflowGraph
+from core.nodes import NodeInstance
 
 
 def test_duplicate_nodes_are_rejected() -> None:
     graph = WorkflowGraph()
 
     graph.add_node(
-        Node(
+        NodeInstance(
             id="node-1",
             type="test",
-            name="Node One",
-        )
-    )
-
-    graph.add_node(
-        Node(
-            id="node-1",
-            type="test",
-            name="Duplicate Node",
         )
     )
 
     with pytest.raises(DuplicateNodeError):
-        graph.validate()
+        graph.add_node(
+            NodeInstance(
+                id="node-1",
+                type="test",
+            )
+        )
 
 
 def test_invalid_port_direction_is_rejected() -> None:
     graph = WorkflowGraph()
 
     graph.add_node(
-        Node(
+        NodeInstance(
             id="source",
             type="test",
-            name="Source",
         )
     )
 
     graph.add_node(
-        Node(
+        NodeInstance(
             id="target",
             type="test",
-            name="Target",
         )
     )
 

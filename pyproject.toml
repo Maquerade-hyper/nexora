@@ -22,7 +22,6 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.25",
     "httpx>=0.28",
-    "ruff>=0.9",
     "mypy>=1.14",
     "pre-commit>=4.0"
 ]
@@ -32,10 +31,6 @@ py-modules = []
 
 [tool.setuptools.packages.find]
 include = ["nexora*"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

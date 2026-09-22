@@ -1,22 +1,18 @@
-from core.graph.edges import Edge
-from core.graph.graph import WorkflowGraph
-from core.graph.models import Node
-from core.graph.ports import Port, PortDirection
+from core.graph import Edge, Port, PortDirection, WorkflowGraph
+from core.nodes import NodeInstance
 
 
-def test_workflow_graph_can_contain_nodes_and_edges() -> None:
+def test_workflow_graph_can_contain_node_instances_and_edges() -> None:
     graph = WorkflowGraph()
 
-    trigger = Node(
+    trigger = NodeInstance(
         id="trigger",
         type="http.trigger",
-        name="HTTP Trigger",
     )
 
-    response = Node(
+    response = NodeInstance(
         id="response",
         type="http.response",
-        name="HTTP Response",
     )
 
     graph.add_node(trigger)
@@ -53,4 +49,5 @@ def test_workflow_graph_can_contain_nodes_and_edges() -> None:
 
     assert graph.node("trigger") is trigger
     assert graph.node("response") is response
-    assert len(graph.edges) == 1
+    assert graph.node_count() == 2
+    assert graph.edge_count() == 1

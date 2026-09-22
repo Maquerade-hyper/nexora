@@ -1,32 +1,33 @@
 from core.errors.graph import (
     DuplicateConnectionError,
-    DuplicateNodeError,
     InvalidConnectionError,
     NodeNotFoundError,
 )
 from core.graph.edges import Edge
-from core.graph.models import Node
 from core.graph.ports import Port, PortDirection
+from core.nodes.instances import NodeInstance
 
 
-def validate_nodes(nodes: list[Node]) -> None:
-    """Validate node identity and uniqueness."""
+def validate_nodes(nodes: list[NodeInstance]) -> None:
+    """Validate node instance identity."""
 
     seen: set[str] = set()
 
     for node in nodes:
         if node.id in seen:
-            raise DuplicateNodeError(f"Node '{node.id}' is defined more than once.")
+            raise ValueError(f"Node '{node.id}' is defined more than once.")
 
         seen.add(node.id)
 
 
 def validate_edges(
-    nodes: list[Node],
+    nodes: list[NodeInstance],
     ports: list[Port],
     edges: list[Edge],
 ) -> None:
     """Validate graph connections."""
+
+    validate_nodes(nodes)
 
     node_ids = {node.id for node in nodes}
     port_map = {port.id: port for port in ports}
@@ -51,13 +52,15 @@ def validate_edges(
         if source_port.node_id != edge.source_node_id:
             raise InvalidConnectionError(
                 f"Source port '{edge.source_port_id}' belongs to "
-                f"node '{source_port.node_id}', not '{edge.source_node_id}'."
+                f"node '{source_port.node_id}', not "
+                f"'{edge.source_node_id}'."
             )
 
         if target_port.node_id != edge.target_node_id:
             raise InvalidConnectionError(
                 f"Target port '{edge.target_port_id}' belongs to "
-                f"node '{target_port.node_id}', not '{edge.target_node_id}'."
+                f"node '{target_port.node_id}', not "
+                f"'{edge.target_node_id}'."
             )
 
         if source_port.direction != PortDirection.OUTPUT:
