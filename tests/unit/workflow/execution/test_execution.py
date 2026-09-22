@@ -39,3 +39,22 @@ def test_failed_execution_result() -> None:
     assert not result.success
     assert result.output is None
     assert result.error == "Something went wrong"
+
+
+def test_execution_context_returns_multiple_outputs() -> None:
+    context = ExecutionContext(
+        workflow_id="workflow-1",
+        run_id="run-1",
+    )
+
+    context.set_output("node-a", {"value": 1})
+    context.set_output("node-b", {"value": 2})
+
+    outputs = context.get_outputs(
+        ["node-a", "node-b"]
+    )
+
+    assert outputs == {
+        "node-a": {"value": 1},
+        "node-b": {"value": 2},
+    }
