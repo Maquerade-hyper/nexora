@@ -1,53 +1,262 @@
-@"
-# Python
-__pycache__/
-*.py[cod]
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-.venv/
-venv/
-env/
+# ============================================================
 
-# Node
-node_modules/
-dist/
-build/
-.npm/
-*.log
+# Nexora - Git Ignore
 
-# Environment
+# ============================================================
+
+# ------------------------------------------------------------
+
+# Environment / Secrets
+
+# ------------------------------------------------------------
+
 .env
 .env.*
 !.env.example
+!.env.test.example
+!.env.production.example
 
-# IDE
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ------------------------------------------------------------
+
+# Python
+
+# ------------------------------------------------------------
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+*.pyo
+*.pyd
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.pyre/
+.pytype/
+.hypothesis/
+
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+coverage.json
+.pytest_cache/
+
+# Virtual environments
+
+.venv/
+venv/
+env/
+ENV/
+.ENV/
+
+# Python packaging
+
+build/
+dist/
+*.egg
+*.egg-info/
+
+# ------------------------------------------------------------
+
+# Node.js
+
+# ------------------------------------------------------------
+
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.yarn-cache/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Frontend build output
+
+dist/
+build/
+.vite/
+.cache/
+
+# ------------------------------------------------------------
+
+# IDE / Editors
+
+# ------------------------------------------------------------
+
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
 .idea/
+*.iml
+
 *.swp
+*.swo
+*~
 
-# OS
+# ------------------------------------------------------------
+
+# Operating System
+
+# ------------------------------------------------------------
+
 .DS_Store
+.DS_Store?
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Nexora
-.nexora/
-data/
-storage/
-secrets/
-*.secret
-*.key
-*.pem
+# ------------------------------------------------------------
 
-# Docker
-docker-data/
+# Logs
 
-# Temporary
+# ------------------------------------------------------------
+
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------
+
+# Temporary Files
+
+# ------------------------------------------------------------
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+
 tmp/
 temp/
-"@ | Set-Content ".gitignore"
+
+# ------------------------------------------------------------
+
+# Test / Runtime Artifacts
+
+# ------------------------------------------------------------
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+*.pid
+*.pid.lock
+
+# ------------------------------------------------------------
+
+# Database / Local Runtime Files
+
+# ------------------------------------------------------------
+
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# ------------------------------------------------------------
+
+# Docker Local Overrides
+
+# ------------------------------------------------------------
+
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ------------------------------------------------------------
+
+# Generated / Build Artifacts
+
+# ------------------------------------------------------------
+
+*.generated
+*.generated.*
+generated/
+artifacts/
+
+# ------------------------------------------------------------
+
+# Nexora Local Data
+
+# ------------------------------------------------------------
+
+.local/
+.runtime/
+.workspace/
+
+# ------------------------------------------------------------
+
+# AI / Model Artifacts
+
+# ------------------------------------------------------------
+
+models/
+checkpoints/
+weights/
+
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.gguf
+
+# ------------------------------------------------------------
+
+# Documentation Build Output
+
+# ------------------------------------------------------------
+
+site/
+docs/_build/
+docs/.cache/
+
+# ------------------------------------------------------------
+
+# OS / Tool Specific
+
+# ------------------------------------------------------------
+
+*.code-workspace
+
+# ------------------------------------------------------------
+
+# Local Configuration
+
+# ------------------------------------------------------------
+
+config/local/
+config/user/
+config/secrets/
+
+# ------------------------------------------------------------
+
+# Backup / Recovery
+
+# ------------------------------------------------------------
+
+*.bak
+*.backup
+*.orig
+*.rej
+*.swp
+*.swo
+
