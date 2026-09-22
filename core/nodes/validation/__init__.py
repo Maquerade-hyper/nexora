@@ -1,5 +1,9 @@
-from core.nodes.validation.config import validate_config_type
+from core.nodes.validation.config import (
+    NodeConfigurationError,
+    validate_node_configuration,
+)
 
 __all__ = [
-    "validate_config_type",
+    "NodeConfigurationError",
+    "validate_node_configuration",
 ]
