@@ -10,6 +10,12 @@ from core.workflow.execution.errors import (
     NodeExecutionError,
     WorkflowExecutionError,
 )
+from core.workflow.execution.events import (
+    ExecutionEvent,
+    ExecutionEventSink,
+    ExecutionEventType,
+    InMemoryExecutionEventSink,
+)
 from core.workflow.execution.executor import NodeExecutor
 from core.workflow.execution.registry import NodeExecutorRegistry
 from core.workflow.execution.result import ExecutionResult
@@ -20,10 +26,14 @@ __all__ = [
     "ExecutionControlStatus",
     "ExecutionController",
     "ExecutionError",
+    "ExecutionEvent",
+    "ExecutionEventSink",
+    "ExecutionEventType",
     "NodeExecutionError",
     "NodeExecutor",
     "NodeExecutorRegistry",
     "ExecutionResult",
+    "InMemoryExecutionEventSink",
     "WorkflowExecutionEngine",
     "WorkflowExecutionError",
 ]

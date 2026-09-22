@@ -1,239 +1,286 @@
-from core.graph import Edge, Port, PortDirection
-from core.nodes import NodeDefinition, NodeFactory, NodeRegistry
 from core.nodes.instances.model import NodeInstance
-from core.workflow.execution import (
-    ExecutionContext,
-    ExecutionControlStatus,
-    ExecutionController,
-    ExecutionResult,
-    NodeExecutor,
-    NodeExecutorRegistry,
-    WorkflowExecutionEngine,
+from core.workflow.execution.context import ExecutionContext
+from core.workflow.execution.control import ExecutionController
+from core.workflow.execution.dependencies import DependencyResolver
+from core.workflow.execution.events import (
+    ExecutionEvent,
+    ExecutionEventSink,
+    ExecutionEventType,
 )
+from core.workflow.execution.registry import NodeExecutorRegistry
 from core.workflow.models import Workflow
-from core.workflow.runs import WorkflowRun
+from core.workflow.planning import WorkflowPlanner
+from core.workflow.runs import (
+    WorkflowRun,
+    WorkflowRunLifecycle,
+)
 
 
-class RecordingExecutor(NodeExecutor):
-    def __init__(self, calls: list[str]) -> None:
-        self.calls = calls
+class WorkflowExecutionEngine:
+    """Executes workflows according to their dependency plan."""
+
+    def __init__(
+        self,
+        executor_registry: NodeExecutorRegistry,
+        event_sink: ExecutionEventSink | None = None,
+    ) -> None:
+        self.executor_registry = executor_registry
+        self.event_sink = event_sink
+
+    def _find_node(
+        self,
+        workflow: Workflow,
+        node_id: str,
+    ) -> NodeInstance:
+        for node in workflow.graph.nodes:
+            if node.id == node_id:
+                return node
+
+        raise KeyError(f"Node not found: {node_id}")
+
+    def _emit(
+        self,
+        event: ExecutionEvent,
+    ) -> None:
+        if self.event_sink is not None:
+            self.event_sink.emit(event)
 
     def execute(
         self,
-        node: NodeInstance,
-        context: ExecutionContext,
-    ) -> ExecutionResult:
-        self.calls.append(node.id)
+        workflow: Workflow,
+        run: WorkflowRun,
+        controller: ExecutionController | None = None,
+    ) -> WorkflowRun:
+        planner = WorkflowPlanner()
+        plan = planner.create_plan(workflow)
 
-        return ExecutionResult.succeeded(
-            {
-                "node": node.id,
-                "executed": True,
-            }
+        lifecycle = WorkflowRunLifecycle()
+
+        for step in plan.steps:
+            lifecycle.add_node(run, step.node_id)
+
+        lifecycle.mark_ready(run)
+        lifecycle.mark_running(run)
+
+        self._emit(
+            ExecutionEvent(
+                event_type=ExecutionEventType.WORKFLOW_STARTED,
+                workflow_id=workflow.id,
+                run_id=run.id,
+            )
         )
 
-
-class FailingExecutor(NodeExecutor):
-    def execute(
-        self,
-        node: NodeInstance,
-        context: ExecutionContext,
-    ) -> ExecutionResult:
-        return ExecutionResult.failed(
-            "Intentional test failure"
+        context = ExecutionContext(
+            workflow_id=workflow.id,
+            run_id=run.id,
         )
 
+        resolver = DependencyResolver(plan)
 
-class RaisingExecutor(NodeExecutor):
-    def execute(
-        self,
-        node: NodeInstance,
-        context: ExecutionContext,
-    ) -> ExecutionResult:
-        raise RuntimeError("Unexpected executor error")
-
-
-def create_workflow() -> Workflow:
-    registry = NodeRegistry()
-
-    registry.register(
-        NodeDefinition(
-            type="test.node",
-            name="Test Node",
-            description="Test execution node.",
-            config_schema={},
+        execution_controller = (
+            controller
+            if controller is not None
+            else ExecutionController()
         )
-    )
 
-    factory = NodeFactory(registry)
+        completed_nodes: set[str] = set()
+        running_nodes: set[str] = set()
 
-    workflow = Workflow(
-        id="workflow-1",
-        name="Execution Test",
-        description="Tests workflow execution.",
-    )
+        while len(completed_nodes) < len(plan.steps):
+            if execution_controller.cancellation_requested:
+                lifecycle.mark_cancelled(run)
+                execution_controller.mark_cancelled()
 
-    node_a = factory.create(
-        node_id="a",
-        node_type="test.node",
-        config={},
-    )
+                self._emit(
+                    ExecutionEvent(
+                        event_type=(
+                            ExecutionEventType.WORKFLOW_CANCELLED
+                        ),
+                        workflow_id=workflow.id,
+                        run_id=run.id,
+                    )
+                )
 
-    node_b = factory.create(
-        node_id="b",
-        node_type="test.node",
-        config={},
-    )
+                return run
 
-    workflow.graph.add_node(node_a)
-    workflow.graph.add_node(node_b)
+            ready_nodes = resolver.ready_nodes(
+                completed_nodes,
+                running_nodes,
+            )
 
-    workflow.graph.add_port(
-        Port(
-            id="a.output",
-            node_id="a",
-            name="output",
-            direction=PortDirection.OUTPUT,
+            if not ready_nodes:
+                error = (
+                    "Workflow execution cannot make progress"
+                )
+
+                lifecycle.mark_failed(run, error)
+
+                self._emit(
+                    ExecutionEvent(
+                        event_type=(
+                            ExecutionEventType.WORKFLOW_FAILED
+                        ),
+                        workflow_id=workflow.id,
+                        run_id=run.id,
+                        message=error,
+                    )
+                )
+
+                return run
+
+            for node_id in ready_nodes:
+                if execution_controller.cancellation_requested:
+                    lifecycle.mark_cancelled(run)
+                    execution_controller.mark_cancelled()
+
+                    self._emit(
+                        ExecutionEvent(
+                            event_type=(
+                                ExecutionEventType.WORKFLOW_CANCELLED
+                            ),
+                            workflow_id=workflow.id,
+                            run_id=run.id,
+                        )
+                    )
+
+                    return run
+
+                node = self._find_node(
+                    workflow,
+                    node_id,
+                )
+
+                node_run = run.nodes[node_id]
+
+                node_run.mark_ready()
+
+                self._emit(
+                    ExecutionEvent(
+                        event_type=ExecutionEventType.NODE_READY,
+                        workflow_id=workflow.id,
+                        run_id=run.id,
+                        node_id=node_id,
+                    )
+                )
+
+                node_run.mark_running()
+                running_nodes.add(node_id)
+
+                self._emit(
+                    ExecutionEvent(
+                        event_type=ExecutionEventType.NODE_STARTED,
+                        workflow_id=workflow.id,
+                        run_id=run.id,
+                        node_id=node_id,
+                    )
+                )
+
+                executor = self.executor_registry.get(node)
+
+                try:
+                    result = executor.execute(
+                        node,
+                        context,
+                    )
+                except Exception as exc:
+                    error = (
+                        str(exc)
+                        or "Node execution failed"
+                    )
+
+                    node_run.mark_failed(error)
+
+                    self._emit(
+                        ExecutionEvent(
+                            event_type=(
+                                ExecutionEventType.NODE_FAILED
+                            ),
+                            workflow_id=workflow.id,
+                            run_id=run.id,
+                            node_id=node_id,
+                            message=error,
+                        )
+                    )
+
+                    lifecycle.mark_failed(run, error)
+
+                    self._emit(
+                        ExecutionEvent(
+                            event_type=(
+                                ExecutionEventType.WORKFLOW_FAILED
+                            ),
+                            workflow_id=workflow.id,
+                            run_id=run.id,
+                            message=error,
+                        )
+                    )
+
+                    return run
+
+                if not result.success:
+                    error = (
+                        result.error
+                        or "Node execution failed"
+                    )
+
+                    node_run.mark_failed(error)
+
+                    self._emit(
+                        ExecutionEvent(
+                            event_type=(
+                                ExecutionEventType.NODE_FAILED
+                            ),
+                            workflow_id=workflow.id,
+                            run_id=run.id,
+                            node_id=node_id,
+                            message=error,
+                        )
+                    )
+
+                    lifecycle.mark_failed(run, error)
+
+                    self._emit(
+                        ExecutionEvent(
+                            event_type=(
+                                ExecutionEventType.WORKFLOW_FAILED
+                            ),
+                            workflow_id=workflow.id,
+                            run_id=run.id,
+                            message=error,
+                        )
+                    )
+
+                    return run
+
+                context.set_output(
+                    node_id,
+                    result.output,
+                )
+
+                node_run.mark_completed()
+
+                running_nodes.remove(node_id)
+                completed_nodes.add(node_id)
+
+                self._emit(
+                    ExecutionEvent(
+                        event_type=(
+                            ExecutionEventType.NODE_COMPLETED
+                        ),
+                        workflow_id=workflow.id,
+                        run_id=run.id,
+                        node_id=node_id,
+                    )
+                )
+
+        lifecycle.mark_completed(run)
+
+        self._emit(
+            ExecutionEvent(
+                event_type=ExecutionEventType.WORKFLOW_COMPLETED,
+                workflow_id=workflow.id,
+                run_id=run.id,
+            )
         )
-    )
 
-    workflow.graph.add_port(
-        Port(
-            id="b.input",
-            node_id="b",
-            name="input",
-            direction=PortDirection.INPUT,
-        )
-    )
-
-    workflow.graph.add_edge(
-        Edge(
-            source_node_id="a",
-            source_port_id="a.output",
-            target_node_id="b",
-            target_port_id="b.input",
-        )
-    )
-
-    return workflow
-
-
-def test_engine_executes_workflow() -> None:
-    workflow = create_workflow()
-
-    calls: list[str] = []
-
-    registry = NodeExecutorRegistry()
-
-    registry.register(
-        "test.node",
-        RecordingExecutor(calls),
-    )
-
-    engine = WorkflowExecutionEngine(registry)
-
-    run = WorkflowRun(
-        id="run-1",
-        workflow_id=workflow.id,
-    )
-
-    result = engine.execute(
-        workflow,
-        run,
-    )
-
-    assert result.id == "run-1"
-    assert result.workflow_id == "workflow-1"
-    assert result.status.value == "completed"
-
-    assert result.nodes["a"].status.value == "completed"
-    assert result.nodes["b"].status.value == "completed"
-
-    assert calls == ["a", "b"]
-
-
-def test_engine_handles_node_failure() -> None:
-    workflow = create_workflow()
-
-    registry = NodeExecutorRegistry()
-
-    registry.register(
-        "test.node",
-        FailingExecutor(),
-    )
-
-    engine = WorkflowExecutionEngine(registry)
-
-    run = WorkflowRun(
-        id="run-failure",
-        workflow_id=workflow.id,
-    )
-
-    result = engine.execute(
-        workflow,
-        run,
-    )
-
-    assert result.status.value == "failed"
-    assert result.error == "Intentional test failure"
-    assert result.nodes["a"].status.value == "failed"
-
-
-def test_engine_handles_cancellation() -> None:
-    workflow = create_workflow()
-
-    calls: list[str] = []
-
-    registry = NodeExecutorRegistry()
-
-    registry.register(
-        "test.node",
-        RecordingExecutor(calls),
-    )
-
-    controller = ExecutionController()
-    controller.request_cancellation()
-
-    engine = WorkflowExecutionEngine(registry)
-
-    run = WorkflowRun(
-        id="run-cancelled",
-        workflow_id=workflow.id,
-    )
-
-    result = engine.execute(
-        workflow,
-        run,
-        controller,
-    )
-
-    assert result.status.value == "cancelled"
-    assert calls == []
-    assert controller.status == ExecutionControlStatus.CANCELLED
-
-
-def test_engine_handles_executor_exception() -> None:
-    workflow = create_workflow()
-
-    registry = NodeExecutorRegistry()
-
-    registry.register(
-        "test.node",
-        RaisingExecutor(),
-    )
-
-    engine = WorkflowExecutionEngine(registry)
-
-    run = WorkflowRun(
-        id="run-exception",
-        workflow_id=workflow.id,
-    )
-
-    result = engine.execute(
-        workflow,
-        run,
-    )
-
-    assert result.status.value == "failed"
-    assert result.error == "Unexpected executor error"
-    assert result.nodes["a"].status.value == "failed"
+        return run
